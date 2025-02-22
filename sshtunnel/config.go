@@ -10,4 +10,6 @@ type Config struct {
 	User    string   `json:"user"`
 	Pass    string   `json:"pass,omitempty"`
 	Tunnels []Tunnel `json:"tunnels,omitempty"`
+	Key     string   `json:"key,omitempty"`
+	KeyPass string   `json:"keyPass,omitempty"`
 }
