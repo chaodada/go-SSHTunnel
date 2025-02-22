@@ -1,5 +1,7 @@
 [
   {
+    "key": "密钥",
+    "keyPass": "admin",
     "addr": "192.168.10.201:22",
     "user": "root",
     "pass": "root",
