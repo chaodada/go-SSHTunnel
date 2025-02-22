@@ -40,14 +40,46 @@ func (st *SSHTunnel) Close() {
 	}
 }
 
+
 func (st *SSHTunnel) GetSSHClient() (*ssh.Client, error) {
 	if st.client != nil {
 		return st.client, nil
 	}
 	var auth []ssh.AuthMethod
 	auth = make([]ssh.AuthMethod, 0)
-	auth = append(auth, ssh.Password(st.config.Pass))
 
+	// 如果配置中有密钥字符串，使用密钥认证
+	if st.config.Key != "" {
+		//fmt.Println(st.config.Key)
+		if st.config.KeyPass != "" {
+			// 使用 passphrase 解密密钥字符串
+			passphrase := "admin" // 提供密码来解密密钥
+			// 解析加密的密钥字符串
+			signer, err := ssh.ParsePrivateKeyWithPassphrase([]byte(st.config.Key), []byte(passphrase))
+			if err != nil {
+				return nil, fmt.Errorf("解析私钥失败: %v", err)
+			}
+			auth = append(auth, ssh.PublicKeys(signer))
+		} else {
+			//signer, err := ssh.ParsePrivateKeyWithPassphrase([]byte(st.config.Key), []byte(passphrase))
+			//if err != nil {
+			//	return nil, fmt.Errorf("解析私钥失败: %v", err)
+			//}
+
+			// 解析密钥字符串
+			signer, err := ssh.ParsePrivateKey([]byte(st.config.Key))
+			if err != nil {
+				return nil, fmt.Errorf("解析私钥失败: %v", err)
+			}
+
+			auth = append(auth, ssh.PublicKeys(signer))
+		}
+	} else {
+		// 否则使用密码认证
+		auth = append(auth, ssh.Password(st.config.Pass))
+	}
+
+	// 创建 SSH 客户端配置
 	sc := &ssh.ClientConfig{
 		User: st.config.User,
 		Auth: auth,
@@ -55,14 +87,42 @@ func (st *SSHTunnel) GetSSHClient() (*ssh.Client, error) {
 			return nil
 		},
 	}
+
+	// 尝试连接 SSH 服务器
 	var err error
 	st.client, err = ssh.Dial("tcp", st.config.Addr, sc)
 	if err != nil {
 		return nil, err
 	}
+
 	log.Printf("连接到服务器成功: %s", st.config.Addr)
-	return st.client, err
+	return st.client, nil
 }
+
+
+// func (st *SSHTunnel) GetSSHClient() (*ssh.Client, error) {
+// 	if st.client != nil {
+// 		return st.client, nil
+// 	}
+// 	var auth []ssh.AuthMethod
+// 	auth = make([]ssh.AuthMethod, 0)
+// 	auth = append(auth, ssh.Password(st.config.Pass))
+
+// 	sc := &ssh.ClientConfig{
+// 		User: st.config.User,
+// 		Auth: auth,
+// 		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+// 			return nil
+// 		},
+// 	}
+// 	var err error
+// 	st.client, err = ssh.Dial("tcp", st.config.Addr, sc)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	log.Printf("连接到服务器成功: %s", st.config.Addr)
+// 	return st.client, err
+// }
 
 func (st *SSHTunnel) connect(t Tunnel) {
 	tid := fmt.Sprintf("%s-%s", t.Local, t.Remote)
